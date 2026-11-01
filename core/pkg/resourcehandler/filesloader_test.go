@@ -266,6 +266,10 @@ func TestGetResourcesFromPath_SingleFileOutsideRepositoryKeepsItsSource(t *testi
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dir := t.TempDir()
+			// Inside a checkout the root is the repository root instead.
+			if _, err := cautils.GetGitRootDir(dir); err == nil {
+				t.Skip("the temporary directory is inside a git checkout")
+			}
 			path := filepath.Join(dir, tt.file)
 			require.NoError(t, os.WriteFile(path, []byte(tt.contents), 0o600))
 
