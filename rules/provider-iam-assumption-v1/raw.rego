@@ -3,9 +3,9 @@ package armo_builtins
 
 import rego.v1
 
-# A ServiceAccount annotated for EKS IRSA or GKE Workload Identity can exchange
-# its projected token for cloud provider credentials, so anything able to use
-# the token reaches the cloud account behind it.
+# A ServiceAccount annotated for EKS IRSA, GKE Workload Identity or Azure Workload
+# Identity can exchange its projected token for cloud provider credentials, so
+# anything able to use the token reaches the cloud account behind it.
 deny contains msga if {
 	sa := input[_]
 	sa.kind == "ServiceAccount"
