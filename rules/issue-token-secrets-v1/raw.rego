@@ -26,7 +26,7 @@ deny contains msga if {
 		rule := role.rules[p]
 		targets_secrets(rule)
 		verb := rule.verbs[l]
-		verb in {"create", "get", "update", "patch", "*"}
+		verb in {"create", "get", "list", "watch", "update", "patch", "*"}
 	])
 
 	resources_path := sort([sprintf("relatedObjects[%d].rules[%d].resources[%d]", [i, p, l]) |
@@ -69,14 +69,15 @@ deny contains msga if {
 # Only the verb bundles that actually yield a usable token are reported, so that
 # a lone 'create' or a read-only grant does not raise an alert.
 
-# create + get: create the token secret, then read the minted token back.
+# create + get, list or watch: create the token secret, then read the minted
+# token back. list and watch return a secret's contents just as get does.
 # RBAC cannot authorize a top-level create through an entry carrying
 # resourceNames (the object name is unknown at authorization time), so the
-# create has to come from an unrestricted entry. The get may be name restricted
+# create has to come from an unrestricted entry. The read may be name restricted
 # — the subject simply creates the secret under that name and reads it back.
 can_issue_token_secret(role) if {
 	grants_unrestricted(role, "create")
-	grants(role, "get")
+	grants_read(role)
 }
 
 # create + patch: server side apply can bring the secret into existence even
@@ -103,6 +104,12 @@ grants(role, verb) if {
 	rule := role.rules[_]
 	targets_secrets(rule)
 	rule.verbs[_] in {verb, "*"}
+}
+
+# true if any entry in the role lets the subject read a secret's contents
+grants_read(role) if {
+	some verb in {"get", "list", "watch"}
+	grants(role, verb)
 }
 
 # as above, but only from entries that are not narrowed with resourceNames
