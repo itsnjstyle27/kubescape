@@ -21,6 +21,7 @@ deny contains msga if {
 	rolebinding.kind == "ClusterRoleBinding"
 
 	rule := role.rules[p]
+	create_reachable(role, rule)
 	subject := rolebinding.subjects[k]
 	is_same_subjects(subjectVector, subject)
 	rule_path := sprintf("relatedObjects[%d].rules[%d]", [i, p])
@@ -48,6 +49,22 @@ deny contains msga if {
 			"externalObjects": subjectVector,
 		},
 	}
+}
+
+# A plain create names no object, so the authorizer compares resourceNames with
+# the empty string, and an entry restricted to real names does not grant it.
+create_reachable(_, rule) if count(object.get(rule, "resourceNames", [])) == 0
+
+create_reachable(_, rule) if "" in rule.resourceNames
+
+# Server side apply is a patch that can bring the object into existence. It names
+# the object, so a restricted create does apply to it, as long as the role can
+# patch PersistentVolumes too.
+create_reachable(role, _) if {
+	patch_rule := role.rules[_]
+	patch_rule.verbs[_] in {"patch", "*"}
+	patch_rule.apiGroups[_] in {"", "*"}
+	patch_rule.resources[_] in {"persistentvolumes", "*"}
 }
 
 is_same_namespace(role, rolebinding) if {
