@@ -85,15 +85,33 @@ can_create_and_approve_csrs(role) if {
 	can_approve_signers(role)
 }
 
-# resourceNames does not restrict create: the object has no name at
-# authorization time, so Kubernetes ignores the field for this verb. A rule
-# carrying resourceNames still creates any CSR.
+# A plain create names no object, so the authorizer compares resourceNames with
+# the empty string, and an entry restricted to real names does not grant it.
 can_create_csrs(role) if {
 	rule := role.rules[_]
+	csr_entry_grants(rule, "create")
+	grants_unnamed_requests(rule)
+}
+
+# Server side apply is a patch that can bring the object into existence. It names
+# the object, so a restricted create does apply to it, as long as the role can
+# patch CSRs too.
+can_create_csrs(role) if {
+	create_rule := role.rules[_]
+	csr_entry_grants(create_rule, "create")
+	patch_rule := role.rules[_]
+	csr_entry_grants(patch_rule, "patch")
+}
+
+csr_entry_grants(rule, verb) if {
 	certificates_api_group(rule)
 	targets(rule, "certificatesigningrequests")
-	verb_or_wildcard(rule.verbs, "create")
+	verb_or_wildcard(rule.verbs, verb)
 }
+
+grants_unnamed_requests(rule) if count(object.get(rule, "resourceNames", [])) == 0
+
+grants_unnamed_requests(rule) if "" in rule.resourceNames
 
 can_retrieve_csrs(role) if {
 	rule := role.rules[_]

@@ -5,7 +5,7 @@ metadata:
 rules:
 - apiGroups: ["certificates.k8s.io"]
   resources: ["certificatesigningrequests"]
-  resourceNames: ["ignored"]
+  resourceNames: ["my-csr"]
   verbs: ["create", "list"]
 - apiGroups: ["certificates.k8s.io"]
   resources: ["certificatesigningrequests/approval"]
