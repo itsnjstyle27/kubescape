@@ -45,7 +45,7 @@ deny contains msga if {
 		removes_pods(rule, rolebinding)
 		some field, values in {
 			"resources": {"pods", "pods/eviction", "pods/status", "nodes", "*/eviction", "*/status", "*"},
-			"verbs": {"create", "delete", "update", "patch", "*"},
+			"verbs": {"create", "delete", "deletecollection", "update", "patch", "*"},
 			"apiGroups": {"", "*"},
 		}
 		value := rule[field][l]
@@ -112,12 +112,12 @@ removes_pods(rule, _) if {
 # The remaining verbs act on a whole object rather than its contents, so
 # resourceNames genuinely confines them and they are only reported unrestricted.
 
-# delete a pod outright.
+# delete a pod outright, or every pod in the namespace with deletecollection.
 removes_pods(rule, _) if {
 	core_api_group(rule)
 	unrestricted_rule(rule)
 	targets(rule, "pods")
-	verb_or_wildcard(rule.verbs, "delete")
+	delete_or_wildcard(rule.verbs)
 }
 
 # evict a pod through the eviction subresource.
@@ -135,7 +135,7 @@ removes_pods(rule, rolebinding) if {
 	core_api_group(rule)
 	unrestricted_rule(rule)
 	targets(rule, "nodes")
-	verb_or_wildcard(rule.verbs, "delete")
+	delete_or_wildcard(rule.verbs)
 }
 
 # taint a node NoExecute, which evicts the pods already on it.
@@ -181,6 +181,8 @@ targets_subresource(rule, _) if rule.resources[_] == "*"
 core_api_group(rule) if rule.apiGroups[_] in {"", "*"}
 
 verb_or_wildcard(verbs, verb) if verbs[_] in {verb, "*"}
+
+delete_or_wildcard(verbs) if verbs[_] in {"delete", "deletecollection", "*"}
 
 update_patch_or_wildcard(verbs) if verbs[_] in {"update", "patch", "*"}
 
